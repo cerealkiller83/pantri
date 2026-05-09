@@ -1,0 +1,31 @@
+{
+  "name": "Pantri — Your Household, Stocked",
+  "short_name": "Pantri",
+  "description": "Shared shopping list and pantry inventory for your family.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF6F1",
+  "theme_color": "#C2410C",
+  "icons": [
+    {
+      "src": "/brand/pantri_icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/pantri_icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/pantri_icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
