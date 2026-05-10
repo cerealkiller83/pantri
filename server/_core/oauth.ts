@@ -43,6 +43,7 @@ export function registerAuthRoutes(app: Express) {
         from: ENV.resendFromEmail,
         to: lowerEmail,
         subject: "Your Pantri login link",
+        text: `Sign in to Pantri\n\nClick the link below to sign in. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl}\n\nIf you didn't request this, you can safely ignore this email.`,
         html: `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
             <h2 style="color:#C2410C;margin-bottom:8px">Sign in to Pantri</h2>
