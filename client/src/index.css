@@ -9,8 +9,7 @@
  * Light: cream paper, espresso ink, terracotta primary, olive secondary, amber accent.
  * Dark:  espresso paper, cream ink, deeper terracotta, muted olive.
  *
- * Colors use oklch() with hex fallbacks for older browsers (Samsung Fridge / Tizen).
- * The fallback is declared first; browsers that support oklch() override it.
+ * All colors use hex/rgba for maximum browser compatibility (Samsung Fridge / Tizen).
  */
 
 @theme inline {
@@ -71,162 +70,109 @@
 :root {
   --radius: 0.875rem;
 
-  /* Pantri tokens — light (hex fallback, then oklch) */
+  /* Pantri tokens — light */
   --cream: #FAF6F1;
-  --cream: oklch(0.971 0.014 78);
   --espresso: #1C1917;
-  --espresso: oklch(0.225 0.027 50);
   --terracotta: #C2410C;
-  --terracotta: oklch(0.578 0.17 38);
   --terracotta-soft: #FB923C;
-  --terracotta-soft: oklch(0.745 0.135 53);
   --olive: #5C7A38;
-  --olive: oklch(0.498 0.075 122);
   --amber-warm: #E8A32E;
-  --amber-warm: oklch(0.795 0.142 78);
   --glass: rgba(255, 255, 255, 0.55);
-  --glass: oklch(1 0 0 / 0.55);
   --glass-border: rgba(28, 25, 23, 0.08);
-  --glass-border: oklch(0.225 0.027 50 / 0.08);
 
   /* Standard shadcn tokens */
-  --background: var(--cream);
-  --foreground: var(--espresso);
+  --background: #FAF6F1;
+  --foreground: #1C1917;
   --card: rgba(255, 255, 255, 0.7);
-  --card: oklch(1 0 0 / 0.7);
-  --card-foreground: var(--espresso);
+  --card-foreground: #1C1917;
   --popover: #FCF9F5;
-  --popover: oklch(0.99 0.01 78);
-  --popover-foreground: var(--espresso);
+  --popover-foreground: #1C1917;
 
-  --primary: var(--terracotta);
-  --primary-foreground: var(--cream);
+  --primary: #C2410C;
+  --primary-foreground: #FAF6F1;
 
-  --secondary: var(--olive);
+  --secondary: #5C7A38;
   --secondary-foreground: #F5F5F0;
-  --secondary-foreground: oklch(0.97 0.01 110);
 
   --muted: #EDE8E2;
-  --muted: oklch(0.94 0.012 78);
   --muted-foreground: #6B6560;
-  --muted-foreground: oklch(0.45 0.018 50);
 
-  --accent: var(--amber-warm);
-  --accent-foreground: var(--espresso);
+  --accent: #E8A32E;
+  --accent-foreground: #1C1917;
 
   --destructive: #C42B1C;
-  --destructive: oklch(0.55 0.20 27);
   --destructive-foreground: #FCF9F5;
-  --destructive-foreground: oklch(0.99 0.01 78);
 
   --border: #DDD6CE;
-  --border: oklch(0.88 0.012 65);
   --input: #E5DFD8;
-  --input: oklch(0.92 0.012 65);
-  --ring: var(--terracotta);
+  --ring: #C2410C;
 
-  --chart-1: var(--terracotta);
-  --chart-2: var(--olive);
-  --chart-3: var(--amber-warm);
+  --chart-1: #C2410C;
+  --chart-2: #5C7A38;
+  --chart-3: #E8A32E;
   --chart-4: #4A9EC2;
-  --chart-4: oklch(0.65 0.10 200);
   --chart-5: #7A3E8F;
-  --chart-5: oklch(0.45 0.12 320);
 
   --sidebar: #F2EDE7;
-  --sidebar: oklch(0.96 0.013 78);
-  --sidebar-foreground: var(--espresso);
-  --sidebar-primary: var(--terracotta);
-  --sidebar-primary-foreground: var(--cream);
+  --sidebar-foreground: #1C1917;
+  --sidebar-primary: #C2410C;
+  --sidebar-primary-foreground: #FAF6F1;
   --sidebar-accent: #E5DFD8;
-  --sidebar-accent: oklch(0.92 0.013 78);
-  --sidebar-accent-foreground: var(--espresso);
+  --sidebar-accent-foreground: #1C1917;
   --sidebar-border: #DDD6CE;
-  --sidebar-border: oklch(0.88 0.012 65);
-  --sidebar-ring: var(--terracotta);
+  --sidebar-ring: #C2410C;
 }
 
 .dark {
-  /* Pantri tokens — dark (hex fallback, then oklch) */
   --cream: #FAF6F1;
-  --cream: oklch(0.971 0.014 78);
   --espresso: #262120;
-  --espresso: oklch(0.18 0.022 50);
   --terracotta: #E07032;
-  --terracotta: oklch(0.665 0.16 45);
   --terracotta-soft: #F0944A;
-  --terracotta-soft: oklch(0.75 0.145 55);
   --olive: #7FA050;
-  --olive: oklch(0.62 0.085 122);
   --amber-warm: #D8982A;
-  --amber-warm: oklch(0.78 0.135 78);
   --glass: rgba(255, 255, 255, 0.06);
-  --glass: oklch(1 0 0 / 0.06);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border: oklch(1 0 0 / 0.08);
 
-  --background: var(--espresso);
+  --background: #262120;
   --foreground: #EDE8E2;
-  --foreground: oklch(0.94 0.014 78);
   --card: rgba(45, 38, 34, 0.85);
-  --card: oklch(0.235 0.025 50 / 0.85);
   --card-foreground: #EDE8E2;
-  --card-foreground: oklch(0.94 0.014 78);
   --popover: #2D2622;
-  --popover: oklch(0.235 0.025 50);
   --popover-foreground: #EDE8E2;
-  --popover-foreground: oklch(0.94 0.014 78);
 
-  --primary: var(--terracotta);
+  --primary: #E07032;
   --primary-foreground: #FCF9F5;
-  --primary-foreground: oklch(0.99 0.01 78);
 
-  --secondary: var(--olive);
+  --secondary: #7FA050;
   --secondary-foreground: #FCF9F5;
-  --secondary-foreground: oklch(0.99 0.01 78);
 
   --muted: #3A322D;
-  --muted: oklch(0.27 0.022 50);
   --muted-foreground: #A39888;
-  --muted-foreground: oklch(0.7 0.018 65);
 
-  --accent: var(--amber-warm);
+  --accent: #D8982A;
   --accent-foreground: #262120;
-  --accent-foreground: oklch(0.18 0.022 50);
 
   --destructive: #E05545;
-  --destructive: oklch(0.7 0.18 22);
   --destructive-foreground: #FCF9F5;
-  --destructive-foreground: oklch(0.99 0.01 78);
 
   --border: rgba(255, 255, 255, 0.10);
-  --border: oklch(1 0 0 / 0.10);
   --input: rgba(255, 255, 255, 0.14);
-  --input: oklch(1 0 0 / 0.14);
-  --ring: var(--terracotta);
+  --ring: #E07032;
 
-  --chart-1: var(--terracotta);
-  --chart-2: var(--olive);
-  --chart-3: var(--amber-warm);
+  --chart-1: #E07032;
+  --chart-2: #7FA050;
+  --chart-3: #D8982A;
   --chart-4: #5BB0D0;
-  --chart-4: oklch(0.7 0.10 200);
   --chart-5: #A05CC0;
-  --chart-5: oklch(0.65 0.13 320);
 
   --sidebar: #302A25;
-  --sidebar: oklch(0.21 0.022 50);
   --sidebar-foreground: #EDE8E2;
-  --sidebar-foreground: oklch(0.94 0.014 78);
-  --sidebar-primary: var(--terracotta);
+  --sidebar-primary: #E07032;
   --sidebar-primary-foreground: #FCF9F5;
-  --sidebar-primary-foreground: oklch(0.99 0.01 78);
   --sidebar-accent: #3A322D;
-  --sidebar-accent: oklch(0.27 0.022 50);
   --sidebar-accent-foreground: #EDE8E2;
-  --sidebar-accent-foreground: oklch(0.94 0.014 78);
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-border: oklch(1 0 0 / 0.08);
-  --sidebar-ring: var(--terracotta);
+  --sidebar-ring: #E07032;
 }
 
 @layer base {
@@ -240,22 +186,16 @@
     @apply bg-background text-foreground;
     font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "ss01", "cv11";
-    /* Subtle paper texture in light mode — hex fallback then oklch */
+    /* Subtle paper texture in light mode */
     background-image:
       radial-gradient(at 88% 12%, rgba(210, 165, 100, 0.35) 0px, transparent 55%),
       radial-gradient(at 8% 92%, rgba(92, 122, 56, 0.18) 0px, transparent 55%);
-    background-image:
-      radial-gradient(at 88% 12%, oklch(0.92 0.04 53 / 0.35) 0px, transparent 55%),
-      radial-gradient(at 8% 92%, oklch(0.92 0.06 122 / 0.18) 0px, transparent 55%);
     background-attachment: fixed;
   }
   .dark body {
     background-image:
       radial-gradient(at 88% 12%, rgba(180, 80, 30, 0.18) 0px, transparent 55%),
       radial-gradient(at 8% 92%, rgba(70, 100, 50, 0.10) 0px, transparent 55%);
-    background-image:
-      radial-gradient(at 88% 12%, oklch(0.45 0.10 38 / 0.18) 0px, transparent 55%),
-      radial-gradient(at 8% 92%, oklch(0.45 0.07 122 / 0.10) 0px, transparent 55%);
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
@@ -310,47 +250,36 @@
 
   /**
    * Glass surface — frosted-glass panel.
-   * Use for top app bars, modals on the fridge, and floating cards.
    * Fallback: solid background for browsers without backdrop-filter.
    */
   .glass {
     background-color: rgba(255, 255, 255, 0.55);
-    background-color: var(--glass);
     backdrop-filter: blur(18px) saturate(140%);
     -webkit-backdrop-filter: blur(18px) saturate(140%);
     border: 1px solid var(--glass-border);
   }
   .glass-strong {
     background-color: #FAF6F1;
-    background-color: rgba(255, 255, 255, 0.78);
-    background-color: oklch(1 0 0 / 0.78);
     backdrop-filter: blur(24px) saturate(150%);
     -webkit-backdrop-filter: blur(24px) saturate(150%);
     border: 1px solid var(--glass-border);
   }
-  /* Fallback for browsers that don't support backdrop-filter */
-  @supports not (backdrop-filter: blur(1px)) {
-    .glass {
-      background-color: #FAF6F1;
-    }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
     .glass-strong {
-      background-color: #FAF6F1;
-    }
-    .dark .glass {
-      background-color: #262120;
-    }
-    .dark .glass-strong {
-      background-color: #262120;
+      background-color: rgba(255, 255, 255, 0.78);
     }
   }
   .dark .glass-strong {
-    background-color: rgba(45, 38, 34, 0.72);
-    background-color: oklch(0.235 0.025 50 / 0.72);
+    background-color: #262120;
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .dark .glass-strong {
+      background-color: rgba(45, 38, 34, 0.72);
+    }
   }
 
   /**
    * Tactile card — soft, paper-like surface with warm shadow.
-   * Uses solid border fallback instead of color-mix() for older browsers.
    */
   .tactile {
     background-color: var(--card);
