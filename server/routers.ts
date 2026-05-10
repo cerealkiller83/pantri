@@ -25,7 +25,9 @@ export const appRouter = router({
     }),
     hasPassword: protectedProcedure.query(async ({ ctx }) => {
       const user = await getUserByOpenId(ctx.user.openId);
-      return { hasPassword: Boolean(user?.passwordHash) };
+      const hash = user?.passwordHash;
+      // A password is "set" only if the hash is a non-empty string
+      return { hasPassword: typeof hash === "string" && hash.length > 10 };
     }),
     changePassword: protectedProcedure
       .input(
@@ -39,12 +41,13 @@ export const appRouter = router({
         if (!user) {
           throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
         }
+        const hasExistingPassword = typeof user.passwordHash === "string" && user.passwordHash.length > 10;
         // If user already has a password, require the current one
-        if (user.passwordHash) {
+        if (hasExistingPassword) {
           if (!input.currentPassword) {
             throw new TRPCError({ code: "BAD_REQUEST", message: "Current password is required" });
           }
-          const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+          const valid = await bcrypt.compare(input.currentPassword, user.passwordHash!);
           if (!valid) {
             throw new TRPCError({ code: "UNAUTHORIZED", message: "Current password is incorrect" });
           }
