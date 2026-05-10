@@ -23,21 +23,31 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    hasPassword: protectedProcedure.query(async ({ ctx }) => {
+      const user = await getUserByOpenId(ctx.user.openId);
+      return { hasPassword: Boolean(user?.passwordHash) };
+    }),
     changePassword: protectedProcedure
       .input(
         z.object({
-          currentPassword: z.string().min(1),
+          currentPassword: z.string().optional(),
           newPassword: z.string().min(6, "New password must be at least 6 characters"),
         })
       )
       .mutation(async ({ ctx, input }) => {
         const user = await getUserByOpenId(ctx.user.openId);
-        if (!user || !user.passwordHash) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "No password set on this account" });
+        if (!user) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
         }
-        const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
-        if (!valid) {
-          throw new TRPCError({ code: "UNAUTHORIZED", message: "Current password is incorrect" });
+        // If user already has a password, require the current one
+        if (user.passwordHash) {
+          if (!input.currentPassword) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Current password is required" });
+          }
+          const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+          if (!valid) {
+            throw new TRPCError({ code: "UNAUTHORIZED", message: "Current password is incorrect" });
+          }
         }
         const newHash = await bcrypt.hash(input.newPassword, 12);
         await updatePasswordHash(user.id, newHash);

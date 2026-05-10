@@ -741,12 +741,16 @@ function ChangePasswordSection() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const hasPasswordQuery = trpc.auth.hasPassword.useQuery();
+  const hasPassword = hasPasswordQuery.data?.hasPassword ?? false;
+
   const changePassword = trpc.auth.changePassword.useMutation({
     onSuccess: () => {
-      toast.success("Password updated");
+      toast.success(hasPassword ? "Password updated" : "Password set");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      void hasPasswordQuery.refetch();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -754,35 +758,45 @@ function ChangePasswordSection() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast.error("New passwords don't match");
+      toast.error("Passwords don't match");
       return;
     }
     if (newPassword.length < 6) {
-      toast.error("New password must be at least 6 characters");
+      toast.error("Password must be at least 6 characters");
       return;
     }
-    changePassword.mutate({ currentPassword, newPassword });
+    changePassword.mutate({
+      currentPassword: hasPassword ? currentPassword : undefined,
+      newPassword,
+    });
   }
 
   return (
     <div className="tactile p-6 space-y-4">
       <h2 className="font-display text-xl flex items-center gap-2">
-        <Lock className="h-5 w-5" /> Change password
+        <Lock className="h-5 w-5" /> {hasPassword ? "Change password" : "Set a password"}
       </h2>
+      {!hasPassword && (
+        <p className="text-sm text-muted-foreground">
+          You signed in with a magic link. Set a password so you can sign in on any device without email.
+        </p>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
+        {hasPassword && (
+          <div className="space-y-1.5">
+            <Label htmlFor="currentPw">Current password</Label>
+            <Input
+              id="currentPw"
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+            />
+          </div>
+        )}
         <div className="space-y-1.5">
-          <Label htmlFor="currentPw">Current password</Label>
-          <Input
-            id="currentPw"
-            type="password"
-            autoComplete="current-password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="newPw">New password</Label>
+          <Label htmlFor="newPw">{hasPassword ? "New password" : "Password"}</Label>
           <Input
             id="newPw"
             type="password"
@@ -795,7 +809,7 @@ function ChangePasswordSection() {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="confirmPw">Confirm new password</Label>
+          <Label htmlFor="confirmPw">Confirm password</Label>
           <Input
             id="confirmPw"
             type="password"
@@ -807,7 +821,7 @@ function ChangePasswordSection() {
           />
         </div>
         <Button type="submit" disabled={changePassword.isPending}>
-          {changePassword.isPending ? "Updating…" : "Update password"}
+          {changePassword.isPending ? "Saving…" : hasPassword ? "Update password" : "Set password"}
         </Button>
       </form>
     </div>
