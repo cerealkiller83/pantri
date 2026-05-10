@@ -19,7 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { enqueue, isTransientNetworkError } from "@/lib/offlineQueue";
-import { CATEGORIES } from "@shared/pantri";
+import { TEXAS_STORES } from "@shared/pantri";
 import { Camera, ScanLine, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -32,16 +32,17 @@ interface AddItemDialogProps {
   onOpenChange: (open: boolean) => void;
   householdId: number;
   defaultKind: ItemKind;
+  /** Pre-select store when adding from a store-filtered view */
+  defaultStoreSlug?: string | null;
 }
 
-export function AddItemDialog({ open, onOpenChange, householdId, defaultKind }: AddItemDialogProps) {
+export function AddItemDialog({ open, onOpenChange, householdId, defaultKind, defaultStoreSlug }: AddItemDialogProps) {
   const utils = trpc.useUtils();
   const [name, setName] = useState("");
-  const [category, setCategory] = useState<string>("other");
   const [quantity, setQuantity] = useState(1);
-  const [unit, setUnit] = useState("ea");
   const [note, setNote] = useState("");
   const [kind, setKind] = useState<ItemKind>(defaultKind);
+  const [storeSlug, setStoreSlug] = useState<string | null>(defaultStoreSlug ?? null);
   const [barcode, setBarcode] = useState<string | undefined>();
   const [expiryDate, setExpiryDate] = useState<string>("");
   const [scanOpen, setScanOpen] = useState(false);
@@ -124,12 +125,11 @@ export function AddItemDialog({ open, onOpenChange, householdId, defaultKind }: 
 
   function reset() {
     setName("");
-    setCategory("other");
     setQuantity(1);
-    setUnit("ea");
     setNote("");
     setBarcode(undefined);
     setExpiryDate("");
+    setStoreSlug(defaultStoreSlug ?? null);
     pickPhoto(null);
   }
 
@@ -147,19 +147,19 @@ export function AddItemDialog({ open, onOpenChange, householdId, defaultKind }: 
       householdId,
       kind,
       name: name.trim(),
-      category: category as never,
+      category: "other" as never,
       quantity,
-      unit,
+      unit: "ea",
       note: note.trim() || undefined,
       barcode,
       expiresAt,
+      storeSlug: kind === "shopping" ? storeSlug : undefined,
     });
   }
 
   function onBarcodeScanned(detected: BarcodeResult) {
     setBarcode(detected.barcode);
     if (detected.productName && !name) setName(detected.productName);
-    if (detected.category) setCategory(detected.category);
     setScanOpen(false);
     toast.success("Barcode found");
   }
@@ -252,8 +252,8 @@ export function AddItemDialog({ open, onOpenChange, householdId, defaultKind }: 
               )}
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <div className="grid gap-1.5 col-span-1">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-1.5">
                 <Label htmlFor="qty">Qty</Label>
                 <Input
                   id="qty"
@@ -263,30 +263,24 @@ export function AddItemDialog({ open, onOpenChange, householdId, defaultKind }: 
                   onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
                 />
               </div>
-              <div className="grid gap-1.5 col-span-1">
-                <Label htmlFor="unit">Unit</Label>
-                <Input
-                  id="unit"
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  placeholder="ea, lb, oz"
-                />
-              </div>
-              <div className="grid gap-1.5 col-span-1">
-                <Label htmlFor="cat">Category</Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger id="cat">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c.slug} value={c.slug}>
-                        {c.emoji} {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {kind === "shopping" && (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="store">Store</Label>
+                  <Select value={storeSlug ?? "__general__"} onValueChange={(v) => setStoreSlug(v === "__general__" ? null : v)}>
+                    <SelectTrigger id="store">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__general__">General</SelectItem>
+                      {TEXAS_STORES.map((s) => (
+                        <SelectItem key={s.slug} value={s.slug}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             {kind === "pantry" && (

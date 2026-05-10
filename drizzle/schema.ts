@@ -172,6 +172,8 @@ export const items = mysqlTable(
     expiresAt: bigint("expiresAt", { mode: "number" }),
     /** Pantry-only: low-stock threshold (auto-promote when quantity <=) */
     lowStockThreshold: int("lowStockThreshold"),
+    /** Shopping-only: which store this item is assigned to (null = General) */
+    storeSlug: varchar("storeSlug", { length: 32 }),
     /** Shopping-only: marked checked off (purchased). When checked, audit fires. */
     checkedAt: bigint("checkedAt", { mode: "number" }),
     checkedBy: int("checkedBy"),
@@ -184,6 +186,7 @@ export const items = mysqlTable(
   },
   (t) => ({
     hhKindIdx: index("items_hh_kind_idx").on(t.householdId, t.kind),
+    hhKindStoreIdx: index("items_hh_kind_store_idx").on(t.householdId, t.kind, t.storeSlug),
     deletedIdx: index("items_deleted_idx").on(t.deletedAt),
     barcodeIdx: index("items_barcode_idx").on(t.barcode),
   })

@@ -108,6 +108,7 @@ export const itemsRouter = router({
         expiresAt: z.number().int().optional(),
         lowStockThreshold: z.number().int().min(0).max(99).optional(),
         barcode: z.string().max(64).optional(),
+        storeSlug: z.string().max(32).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -123,6 +124,7 @@ export const itemsRouter = router({
         expiresAt: input.expiresAt ?? null,
         lowStockThreshold: input.lowStockThreshold ?? null,
         barcode: input.barcode ?? null,
+        storeSlug: input.storeSlug ?? null,
         createdBy: ctx.user.id,
       });
       const cat = CATEGORY_BY_SLUG[input.category];
@@ -164,6 +166,7 @@ export const itemsRouter = router({
         lowStockThreshold: z.number().int().min(0).max(99).nullable().optional(),
         photoKey: z.string().max(256).nullable().optional(),
         kind: ITEM_KIND.optional(),
+        storeSlug: z.string().max(32).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

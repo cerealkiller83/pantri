@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CATEGORY_BY_SLUG } from "@shared/pantri";
+import { STORE_BY_SLUG } from "@shared/pantri";
 import { AlertTriangle, DollarSign, Minus, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -16,6 +16,7 @@ export interface ItemRowItem {
   checkedAt?: number | null;
   kind: "shopping" | "pantry" | "staple";
   photoUrl?: string | null;
+  storeSlug?: string | null;
 }
 
 interface ItemRowProps {
@@ -30,6 +31,8 @@ interface ItemRowProps {
   onShowPrices?: () => void;
   /** Larger touch targets for the fridge / kiosk view */
   large?: boolean;
+  /** Show store badge next to item (useful in "All" view) */
+  showStoreBadge?: boolean;
 }
 
 function expiryChip(expiresAt: number | null | undefined) {
@@ -53,8 +56,9 @@ export function ItemRow({
   onAdjustQuantity,
   onShowPrices,
   large,
+  showStoreBadge,
 }: ItemRowProps) {
-  const cat = CATEGORY_BY_SLUG[item.category];
+  const store = item.storeSlug ? STORE_BY_SLUG[item.storeSlug] : null;
   const expiry = useMemo(() => expiryChip(item.expiresAt), [item.expiresAt]);
   const isLowStock =
     item.kind === "pantry" &&
@@ -120,10 +124,15 @@ export function ItemRow({
             {item.name}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
-            <span>
-              {item.quantity} {item.unit}
-            </span>
-            {cat && <span className="hidden sm:inline">{cat.name}</span>}
+            {item.quantity > 1 && <span>{item.quantity}</span>}
+            {showStoreBadge && store && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                style={{ backgroundColor: store.color + "18", color: store.color }}
+              >
+                {store.name}
+              </span>
+            )}
             {item.note && <span className="italic truncate max-w-[16rem]">"{item.note}"</span>}
             {expiry && (
               <span

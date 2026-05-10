@@ -5,13 +5,10 @@
 
 export const TEXAS_STORES = [
   { slug: "heb", name: "H-E-B", color: "#E2231A" },
-  { slug: "whole_foods", name: "Whole Foods", color: "#00674B" },
-  { slug: "target", name: "Target", color: "#CC0000" },
+  { slug: "costco", name: "Costco", color: "#005DAA" },
+  { slug: "hmart", name: "H-Mart", color: "#E4002B" },
   { slug: "walmart", name: "Walmart", color: "#0071CE" },
   { slug: "trader_joes", name: "Trader Joe's", color: "#B81C22" },
-  { slug: "costco", name: "Costco", color: "#005DAA" },
-  { slug: "sams_club", name: "Sam's Club", color: "#0067A0" },
-  { slug: "central_market", name: "Central Market", color: "#3F6B2C" },
 ] as const;
 
 export type TexasStoreSlug = (typeof TEXAS_STORES)[number]["slug"];

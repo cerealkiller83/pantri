@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { enqueue, isTransientNetworkError } from "@/lib/offlineQueue";
-import { CATEGORIES, POLLING_INTERVAL_MS } from "@shared/pantri";
+import { POLLING_INTERVAL_MS, TEXAS_STORES, STORE_BY_SLUG } from "@shared/pantri";
 import {
   Clock,
   ListChecks,
@@ -42,7 +42,7 @@ export function Dashboard({ householdId }: { householdId: number }) {
   const [addOpen, setAddOpen] = useState(false);
   const [addDefaultKind, setAddDefaultKind] = useState<"shopping" | "pantry" | "staple">("shopping");
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [storeFilter, setStoreFilter] = useState<string | null>(null);
   const [priceItem, setPriceItem] = useState<{ id: number; name: string } | null>(null);
   // Item currently being edited (any kind). When non-null the EditItemDialog
   // is shown; closing it sets back to null. Using the full row keeps the
@@ -202,36 +202,25 @@ export function Dashboard({ householdId }: { householdId: number }) {
   const staples = staplesQuery.data ?? [];
   const expiring = expiringQuery.data ?? [];
 
-  const matches = (item: { name: string; category: string | null }) => {
-    const okSearch =
-      !search.trim() || item.name.toLowerCase().includes(search.trim().toLowerCase());
-    const okCategory = !categoryFilter || item.category === categoryFilter;
-    return okSearch && okCategory;
+  const matches = (item: { name: string }) => {
+    return !search.trim() || item.name.toLowerCase().includes(search.trim().toLowerCase());
   };
 
   const shoppingActive = useMemo(
     () => shopping.filter((i) => !i.checkedAt && matches(i)),
-    [shopping, search, categoryFilter]
+    [shopping, search]
   );
   const shoppingChecked = useMemo(
     () => shopping.filter((i) => i.checkedAt && matches(i)),
-    [shopping, search, categoryFilter]
+    [shopping, search]
   );
   const pantryFiltered = useMemo(
     () => pantry.filter((i) => matches(i)),
-    [pantry, search, categoryFilter]
+    [pantry, search]
   );
-
-  // Categories present in the active tab's data — filter chips only show categories
-  // that actually have items, to avoid clutter.
-  const presentCategories = useMemo(() => {
-    const source = tab === "shopping" ? shopping : tab === "pantry" ? pantry : staples;
-    const present = new Set(source.map((i) => i.category).filter(Boolean) as string[]);
-    return CATEGORIES.filter((c) => present.has(c.slug));
-  }, [tab, shopping, pantry, staples]);
   const staplesFiltered = useMemo(
     () => staples.filter((i) => matches(i)),
-    [staples, search, categoryFilter]
+    [staples, search]
   );
 
   const lowStock = useMemo(
@@ -242,8 +231,21 @@ export function Dashboard({ householdId }: { householdId: number }) {
     [pantry]
   );
 
-  const groupedShopping = useMemo(() => groupByCategory(shoppingActive), [shoppingActive]);
-  const groupedPantry = useMemo(() => groupByCategory(pantryFiltered), [pantryFiltered]);
+  // Store-filtered shopping items
+  const shoppingStoreItems = useMemo(() => {
+    if (!storeFilter) return shoppingActive; // "All" — show everything
+    return shoppingActive.filter((i) => i.storeSlug === storeFilter);
+  }, [shoppingActive, storeFilter]);
+
+  const shoppingGeneralItems = useMemo(() => {
+    if (!storeFilter) return []; // "All" view doesn't need a separate General section
+    return shoppingActive.filter((i) => !i.storeSlug);
+  }, [shoppingActive, storeFilter]);
+
+  const checkedStoreItems = useMemo(() => {
+    if (!storeFilter) return shoppingChecked;
+    return shoppingChecked.filter((i) => i.storeSlug === storeFilter || !i.storeSlug);
+  }, [shoppingChecked, storeFilter]);
 
   const householdName = householdQuery.data?.household.name;
 
@@ -307,31 +309,32 @@ export function Dashboard({ householdId }: { householdId: number }) {
               />
             </div>
 
-            {presentCategories.length > 1 && (
-              <div className="mt-3 flex flex-wrap gap-2">
+            {tab === "shopping" && (
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                 <button
                   type="button"
-                  onClick={() => setCategoryFilter(null)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition ${
-                    categoryFilter === null
+                  onClick={() => setStoreFilter(null)}
+                  className={`shrink-0 text-xs px-3 py-1.5 rounded-full border transition ${
+                    storeFilter === null
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-card/80 border-border hover:bg-card"
                   }`}
                 >
                   All
                 </button>
-                {presentCategories.map((cat) => (
+                {TEXAS_STORES.map((store) => (
                   <button
-                    key={cat.slug}
+                    key={store.slug}
                     type="button"
-                    onClick={() => setCategoryFilter(categoryFilter === cat.slug ? null : cat.slug)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition ${
-                      categoryFilter === cat.slug
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-card/80 border-border hover:bg-card"
-                    }`}
+                    onClick={() => setStoreFilter(store.slug)}
+                    className="shrink-0 text-xs px-3 py-1.5 rounded-full border transition"
+                    style={
+                      storeFilter === store.slug
+                        ? { backgroundColor: store.color, color: "#fff", borderColor: store.color }
+                        : undefined
+                    }
                   >
-                    {cat.emoji} {cat.name}
+                    {store.name}
                   </button>
                 ))}
               </div>
@@ -347,12 +350,15 @@ export function Dashboard({ householdId }: { householdId: number }) {
                 />
               ) : (
                 <>
-                  {Object.entries(groupedShopping).map(([catSlug, list]) => (
-                    <CategorySection key={catSlug} catSlug={catSlug} items={list}>
-                      {list.map((it) => (
+                  {/* Store items (or all items when storeFilter is null) */}
+                  {storeFilter === null ? (
+                    /* "All" view: show items grouped by store with badges */
+                    <div className="space-y-2">
+                      {shoppingStoreItems.map((it) => (
                         <ItemRow
                           key={it.id}
                           item={it}
+                          showStoreBadge
                           onToggleCheck={(next) =>
                             setChecked.mutate({ itemId: it.id, checked: next })
                           }
@@ -361,16 +367,77 @@ export function Dashboard({ householdId }: { householdId: number }) {
                           onDelete={() => softDelete.mutate({ itemId: it.id })}
                         />
                       ))}
-                    </CategorySection>
-                  ))}
+                    </div>
+                  ) : (
+                    /* Store-specific view: store items first, then General below */
+                    <>
+                      {shoppingStoreItems.length > 0 && (
+                        <section className="space-y-2">
+                          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: STORE_BY_SLUG[storeFilter]?.color }}
+                            />
+                            {STORE_BY_SLUG[storeFilter]?.name}
+                            <span className="text-[11px] text-muted-foreground/70">· {shoppingStoreItems.length}</span>
+                          </h3>
+                          <div className="space-y-2">
+                            {shoppingStoreItems.map((it) => (
+                              <ItemRow
+                                key={it.id}
+                                item={it}
+                                onToggleCheck={(next) =>
+                                  setChecked.mutate({ itemId: it.id, checked: next })
+                                }
+                                onShowPrices={() => setPriceItem({ id: it.id, name: it.name })}
+                                onEdit={() => setEditItem(it as EditableItem)}
+                                onDelete={() => softDelete.mutate({ itemId: it.id })}
+                              />
+                            ))}
+                          </div>
+                        </section>
+                      )}
+                      {shoppingGeneralItems.length > 0 && (
+                        <section className="space-y-2">
+                          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <span className="inline-block h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
+                            General
+                            <span className="text-[11px] text-muted-foreground/70">· {shoppingGeneralItems.length}</span>
+                          </h3>
+                          <div className="space-y-2">
+                            {shoppingGeneralItems.map((it) => (
+                              <ItemRow
+                                key={it.id}
+                                item={it}
+                                onToggleCheck={(next) =>
+                                  setChecked.mutate({ itemId: it.id, checked: next })
+                                }
+                                onShowPrices={() => setPriceItem({ id: it.id, name: it.name })}
+                                onEdit={() => setEditItem(it as EditableItem)}
+                                onDelete={() => softDelete.mutate({ itemId: it.id })}
+                              />
+                            ))}
+                          </div>
+                        </section>
+                      )}
+                      {shoppingStoreItems.length === 0 && shoppingGeneralItems.length === 0 && (
+                        <EmptyState
+                          icon={<ShoppingBasket className="h-12 w-12 text-primary" />}
+                          title="Nothing here yet"
+                          desc={`No items for ${STORE_BY_SLUG[storeFilter]?.name ?? "this store"}. Add one!`}
+                          action={<Button onClick={() => openAdd("shopping")}>Add an item</Button>}
+                        />
+                      )}
+                    </>
+                  )}
 
-                  {shoppingChecked.length > 0 && (
+                  {checkedStoreItems.length > 0 && (
                     <details className="tactile p-4">
                       <summary className="cursor-pointer text-sm text-muted-foreground">
-                        Checked off ({shoppingChecked.length})
+                        Checked off ({checkedStoreItems.length})
                       </summary>
                       <div className="mt-3 space-y-2">
-                        {shoppingChecked.map((it) => (
+                        {checkedStoreItems.map((it) => (
                           <ItemRow
                             key={it.id}
                             item={it}
@@ -398,23 +465,21 @@ export function Dashboard({ householdId }: { householdId: number }) {
                   action={!search ? <Button onClick={() => openAdd("pantry")}>Add to pantry</Button> : undefined}
                 />
               ) : (
-                Object.entries(groupedPantry).map(([catSlug, list]) => (
-                  <CategorySection key={catSlug} catSlug={catSlug} items={list}>
-                    {list.map((it) => (
-                      <ItemRow
-                        key={it.id}
-                        item={it}
-                        onAdjustQuantity={(delta) =>
-                          adjustQty.mutate({ itemId: it.id, delta })
-                        }
-                        onPromote={() => promote.mutate({ itemId: it.id })}
-                        onShowPrices={() => setPriceItem({ id: it.id, name: it.name })}
-                        onEdit={() => setEditItem(it as EditableItem)}
-                        onDelete={() => softDelete.mutate({ itemId: it.id })}
-                      />
-                    ))}
-                  </CategorySection>
-                ))
+                <div className="space-y-2">
+                  {pantryFiltered.map((it) => (
+                    <ItemRow
+                      key={it.id}
+                      item={it}
+                      onAdjustQuantity={(delta) =>
+                        adjustQty.mutate({ itemId: it.id, delta })
+                      }
+                      onPromote={() => promote.mutate({ itemId: it.id })}
+                      onShowPrices={() => setPriceItem({ id: it.id, name: it.name })}
+                      onEdit={() => setEditItem(it as EditableItem)}
+                      onDelete={() => softDelete.mutate({ itemId: it.id })}
+                    />
+                  ))}
+                </div>
               )}
             </TabsContent>
 
@@ -529,6 +594,7 @@ export function Dashboard({ householdId }: { householdId: number }) {
         onOpenChange={setAddOpen}
         householdId={householdId}
         defaultKind={addDefaultKind}
+        defaultStoreSlug={storeFilter}
       />
       <PriceHistoryDialog
         open={priceItem !== null}
@@ -545,42 +611,6 @@ export function Dashboard({ householdId }: { householdId: number }) {
   );
 }
 
-function groupByCategory<T extends { category: string }>(items: T[]): Record<string, T[]> {
-  const out: Record<string, T[]> = {};
-  for (const it of items) {
-    const k = it.category || "other";
-    if (!out[k]) out[k] = [];
-    out[k].push(it);
-  }
-  // Order by CATEGORIES order
-  const ordered: Record<string, T[]> = {};
-  for (const c of CATEGORIES) {
-    if (out[c.slug]) ordered[c.slug] = out[c.slug];
-  }
-  return ordered;
-}
-
-function CategorySection({
-  catSlug,
-  items,
-  children,
-}: {
-  catSlug: string;
-  items: { id: number }[];
-  children: React.ReactNode;
-}) {
-  const cat = CATEGORIES.find((c) => c.slug === catSlug);
-  return (
-    <section className="space-y-2">
-      <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-        <span aria-hidden>{cat?.emoji ?? "📦"}</span>
-        <span>{cat?.name ?? "Other"}</span>
-        <span className="text-[11px] text-muted-foreground/70">· {items.length}</span>
-      </h3>
-      <div className="space-y-2">{children}</div>
-    </section>
-  );
-}
 
 function EmptyState({
   icon,
