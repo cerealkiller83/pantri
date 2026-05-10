@@ -96,6 +96,12 @@ export async function getUsersByIds(ids: number[]) {
   return db.select().from(users).where(inArray(users.id, ids));
 }
 
+export async function updatePasswordHash(userId: number, passwordHash: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+}
+
 export async function createUserWithPassword(opts: {
   email: string;
   passwordHash: string;

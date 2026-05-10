@@ -16,6 +16,7 @@ import {
   Bell,
   Copy,
   KeyRound,
+  Lock,
   Refrigerator,
   Trash2,
   Users,
@@ -184,6 +185,9 @@ export function SettingsPage({ householdId }: { householdId: number }) {
           </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="h-4 w-4 mr-1.5" /> Notifications
+          </TabsTrigger>
+          <TabsTrigger value="account">
+            <Lock className="h-4 w-4 mr-1.5" /> Account
           </TabsTrigger>
         </TabsList>
 
@@ -473,6 +477,10 @@ export function SettingsPage({ householdId }: { householdId: number }) {
             <NotificationSetup householdId={householdId} />
           </div>
         </TabsContent>
+
+        <TabsContent value="account" className="mt-4">
+          <ChangePasswordSection />
+        </TabsContent>
       </Tabs>
 
     </AppShell>
@@ -724,6 +732,84 @@ function NotificationSetup({ householdId }: { householdId: number }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function ChangePasswordSection() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const changePassword = trpc.auth.changePassword.useMutation({
+    onSuccess: () => {
+      toast.success("Password updated");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords don't match");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters");
+      return;
+    }
+    changePassword.mutate({ currentPassword, newPassword });
+  }
+
+  return (
+    <div className="tactile p-6 space-y-4">
+      <h2 className="font-display text-xl flex items-center gap-2">
+        <Lock className="h-5 w-5" /> Change password
+      </h2>
+      <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
+        <div className="space-y-1.5">
+          <Label htmlFor="currentPw">Current password</Label>
+          <Input
+            id="currentPw"
+            type="password"
+            autoComplete="current-password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="newPw">New password</Label>
+          <Input
+            id="newPw"
+            type="password"
+            autoComplete="new-password"
+            placeholder="At least 6 characters"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            minLength={6}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="confirmPw">Confirm new password</Label>
+          <Input
+            id="confirmPw"
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={6}
+          />
+        </div>
+        <Button type="submit" disabled={changePassword.isPending}>
+          {changePassword.isPending ? "Updating…" : "Update password"}
+        </Button>
+      </form>
     </div>
   );
 }
