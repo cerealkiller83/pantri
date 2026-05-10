@@ -2,28 +2,38 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PantriWordmark } from "@/components/PantriWordmark";
-import { Mail } from "lucide-react";
 import { useState } from "react";
-import { useLocation } from "wouter";
 
-type State = "idle" | "loading" | "sent" | "error";
+type Mode = "login" | "register";
+type State = "idle" | "loading" | "error";
 
 export function LoginPage() {
+  const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [state, setState] = useState<State>("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const [, setLocation] = useLocation();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setState("loading");
     setErrorMsg("");
 
+    const endpoint = mode === "register" ? "/api/auth/register" : "/api/auth/login";
+    const payload: Record<string, string> = {
+      email: email.trim(),
+      password,
+    };
+    if (mode === "register" && name.trim()) {
+      payload.name = name.trim();
+    }
+
     try {
-      const resp = await fetch("/api/auth/request-login", {
+      const resp = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify(payload),
       });
       const body = await resp.json();
 
@@ -33,13 +43,8 @@ export function LoginPage() {
         return;
       }
 
-      // Dev shortcut: if the server returns a _devLink (no Resend configured), follow it
-      if (body._devLink) {
-        window.location.href = body._devLink;
-        return;
-      }
-
-      setState("sent");
+      // Session cookie set — redirect to app
+      window.location.href = body.redirect || "/";
     } catch {
       setErrorMsg("Network error. Please try again.");
       setState("error");
@@ -55,57 +60,97 @@ export function LoginPage() {
           <p className="mt-2 text-muted-foreground">Your household, stocked.</p>
         </div>
 
-        {state === "sent" ? (
-          <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-3 shadow-sm">
-            <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Mail className="w-6 h-6 text-primary" />
-            </div>
-            <h2 className="font-display text-xl font-semibold">Check your inbox</h2>
-            <p className="text-muted-foreground text-sm">
-              We sent a login link to <strong>{email}</strong>. Click it to sign in — it expires in 15 minutes.
+        <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-8 space-y-5 shadow-sm">
+          <div className="space-y-1.5">
+            <h2 className="font-display text-2xl font-semibold">
+              {mode === "login" ? "Sign in" : "Create account"}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {mode === "login"
+                ? "Enter your email and password."
+                : "Set up your Pantri account."}
             </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground"
-              onClick={() => { setState("idle"); setEmail(""); }}
-            >
-              Use a different email
-            </Button>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-8 space-y-5 shadow-sm">
-            <div className="space-y-1.5">
-              <h2 className="font-display text-2xl font-semibold">Sign in</h2>
-              <p className="text-sm text-muted-foreground">We'll email you a magic link — no password needed.</p>
-            </div>
 
+          {mode === "register" && (
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                id="name"
+                type="text"
+                autoComplete="name"
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 disabled={state === "loading"}
               />
             </div>
+          )}
 
-            {state === "error" && (
-              <p className="text-sm text-destructive">{errorMsg}</p>
-            )}
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email address</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={state === "loading"}
+            />
+          </div>
 
-            <Button type="submit" className="w-full" disabled={state === "loading"}>
-              {state === "loading" ? "Sending…" : "Send login link"}
-            </Button>
-          </form>
-        )}
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              placeholder={mode === "register" ? "At least 6 characters" : "Your password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              disabled={state === "loading"}
+            />
+          </div>
 
-        <p className="text-center text-xs text-muted-foreground">
-          New to Pantri? Just enter your email above — we'll create your account automatically.
+          {state === "error" && (
+            <p className="text-sm text-destructive">{errorMsg}</p>
+          )}
+
+          <Button type="submit" className="w-full" disabled={state === "loading"}>
+            {state === "loading"
+              ? (mode === "login" ? "Signing in…" : "Creating account…")
+              : (mode === "login" ? "Sign in" : "Create account")}
+          </Button>
+        </form>
+
+        <p className="text-center text-sm text-muted-foreground">
+          {mode === "login" ? (
+            <>
+              New to Pantri?{" "}
+              <button
+                type="button"
+                className="text-primary font-medium hover:underline"
+                onClick={() => { setMode("register"); setState("idle"); setErrorMsg(""); }}
+              >
+                Create an account
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <button
+                type="button"
+                className="text-primary font-medium hover:underline"
+                onClick={() => { setMode("login"); setState("idle"); setErrorMsg(""); }}
+              >
+                Sign in
+              </button>
+            </>
+          )}
         </p>
       </div>
     </div>

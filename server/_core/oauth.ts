@@ -1,68 +1,104 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
-import { Resend } from "resend";
+import bcrypt from "bcryptjs";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { ENV } from "./env";
 import { sdk } from "./sdk";
 
-function getResend() {
-  if (!ENV.resendApiKey) return null;
-  return new Resend(ENV.resendApiKey);
-}
-
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+async function setSessionAndRedirect(res: Response, req: Request, user: { openId: string; name?: string | null; email?: string | null }, redirectTo: string = "/") {
+  const sessionToken = await sdk.createSessionToken(user.openId, {
+    name: user.name || user.email || "",
+    expiresInMs: ONE_YEAR_MS,
+  });
+  const cookieOptions = getSessionCookieOptions(req);
+  res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+  const safePath = redirectTo.startsWith("/") ? redirectTo : "/";
+  return safePath;
+}
+
 export function registerAuthRoutes(app: Express) {
-  // POST /api/auth/request-login — send magic link email
-  app.post("/api/auth/request-login", async (req: Request, res: Response) => {
-    const { email } = req.body ?? {};
+  // POST /api/auth/register — create account with email + password
+  app.post("/api/auth/register", async (req: Request, res: Response) => {
+    const { email, password, name } = req.body ?? {};
 
     if (!email || !isValidEmail(email)) {
       res.status(400).json({ error: "Valid email is required" });
       return;
     }
+    if (!password || typeof password !== "string" || password.length < 6) {
+      res.status(400).json({ error: "Password must be at least 6 characters" });
+      return;
+    }
 
     const lowerEmail = (email as string).toLowerCase().trim();
-    const token = await db.createMagicLinkToken(lowerEmail);
-    const returnTo = typeof req.body.returnTo === "string" ? req.body.returnTo : "/";
-    const verifyUrl = `${ENV.appUrl}/api/auth/verify?token=${token}&returnTo=${encodeURIComponent(returnTo)}`;
+    const openId = `email:${lowerEmail}`;
 
-    const resend = getResend();
-    if (!resend) {
-      // Dev fallback: log the link so you can test without Resend configured
-      console.log(`[Auth] Magic link (Resend not configured): ${verifyUrl}`);
-      res.json({ ok: true, _devLink: verifyUrl });
+    // Check if user already exists
+    const existing = await db.getUserByOpenId(openId);
+    if (existing) {
+      res.status(409).json({ error: "An account with this email already exists. Please sign in." });
       return;
     }
 
-    try {
-      await resend.emails.send({
-        from: ENV.resendFromEmail,
-        to: lowerEmail,
-        subject: "Your Pantri login link",
-        text: `Sign in to Pantri\n\nClick the link below to sign in. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl}\n\nIf you didn't request this, you can safely ignore this email.`,
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-            <h2 style="color:#C2410C;margin-bottom:8px">Sign in to Pantri</h2>
-            <p style="color:#44403c;margin-bottom:24px">Click the button below to sign in. This link expires in 15 minutes and can only be used once.</p>
-            <a href="${verifyUrl}" style="display:inline-block;background:#C2410C;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Sign in to Pantri</a>
-            <p style="color:#78716c;font-size:13px;margin-top:24px">If you didn't request this, you can safely ignore this email.</p>
-          </div>
-        `,
-      });
-    } catch (err) {
-      console.error("[Auth] Resend error:", err);
-      res.status(500).json({ error: "Failed to send email. Please try again." });
+    // Hash password and create user
+    const passwordHash = await bcrypt.hash(password, 12);
+    await db.createUserWithPassword({
+      email: lowerEmail,
+      passwordHash,
+      name: typeof name === "string" && name.trim() ? name.trim() : lowerEmail.split("@")[0],
+    });
+
+    const user = await db.getUserByOpenId(openId);
+    if (!user) {
+      res.status(500).json({ error: "Failed to create account" });
       return;
     }
 
-    res.json({ ok: true });
+    const safePath = await setSessionAndRedirect(res, req, user);
+    res.json({ ok: true, redirect: safePath });
   });
 
-  // GET /api/auth/verify?token=xxx&returnTo=/ — verify token and create session
+  // POST /api/auth/login — sign in with email + password
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    const { email, password } = req.body ?? {};
+
+    if (!email || !isValidEmail(email)) {
+      res.status(400).json({ error: "Valid email is required" });
+      return;
+    }
+    if (!password || typeof password !== "string") {
+      res.status(400).json({ error: "Password is required" });
+      return;
+    }
+
+    const lowerEmail = (email as string).toLowerCase().trim();
+    const openId = `email:${lowerEmail}`;
+
+    const user = await db.getUserByOpenId(openId);
+    if (!user || !user.passwordHash) {
+      res.status(401).json({ error: "Invalid email or password" });
+      return;
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      res.status(401).json({ error: "Invalid email or password" });
+      return;
+    }
+
+    // Update last signed in
+    await db.upsertUser({ openId, lastSignedIn: new Date() });
+
+    const safePath = await setSessionAndRedirect(res, req, user);
+    res.json({ ok: true, redirect: safePath });
+  });
+
+  // Keep magic link verify route for existing links in emails
   app.get("/api/auth/verify", async (req: Request, res: Response) => {
     const token = typeof req.query.token === "string" ? req.query.token : "";
     const returnTo = typeof req.query.returnTo === "string" ? req.query.returnTo : "/";
@@ -79,20 +115,9 @@ export function registerAuthRoutes(app: Express) {
     }
 
     await db.markMagicLinkUsed(tokenRow.id);
-
-    // Create or find user by email
     const user = await db.upsertUserByEmail(tokenRow.email);
 
-    const sessionToken = await sdk.createSessionToken(user.openId, {
-      name: user.name || user.email || "",
-      expiresInMs: ONE_YEAR_MS,
-    });
-
-    const cookieOptions = getSessionCookieOptions(req);
-    res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
-    // Sanitize returnTo — only allow relative paths
-    const safePath = returnTo.startsWith("/") ? returnTo : "/";
+    const safePath = await setSessionAndRedirect(res, req, user, returnTo);
     res.redirect(302, safePath);
   });
 }

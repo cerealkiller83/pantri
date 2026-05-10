@@ -96,6 +96,24 @@ export async function getUsersByIds(ids: number[]) {
   return db.select().from(users).where(inArray(users.id, ids));
 }
 
+export async function createUserWithPassword(opts: {
+  email: string;
+  passwordHash: string;
+  name: string;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const openId = `email:${opts.email}`;
+  await db.insert(users).values({
+    openId,
+    email: opts.email,
+    passwordHash: opts.passwordHash,
+    name: opts.name,
+    loginMethod: "password",
+    lastSignedIn: new Date(),
+  });
+}
+
 /* --------------------------------------------------------- HOUSEHOLDS */
 
 export const DEFAULT_KIOSK_PERMISSIONS: KioskPermissions = {
